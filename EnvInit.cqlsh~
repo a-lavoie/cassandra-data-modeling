@@ -1,0 +1,15 @@
+USE mysite;
+
+// 
+
+DROP TABLE IF EXISTS Concept;
+
+/* 
+   Query table
+*/
+CREATE TABLE PhotosByTags_v1 (
+   tag          varchar,
+   tag_id       timeuuid       
+   photos       set<>
+   PRIMARY KEY (tag, photo_id)     
+);

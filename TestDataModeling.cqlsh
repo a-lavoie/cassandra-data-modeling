@@ -1,0 +1,51 @@
+/* Design rules applied
+
+   In Cassandra
+
+   (1) You build models based on your queries, not your data. 
+       If you need to find items based by tag, then you make another table for that and duplicate the data.
+
+   (2) Cassandra presume data space storage is cheap 
+       Duplicate your data to meet your queries. 
+       The Write action is fast, and writing the same data many many times is normally fine.
+
+   (3) If your rows are skinny, something must be wrong in your data modeling design.
+       The objectives is to be able to get the most of search capability 
+       while storing as much columns in one row
+
+   (4) In cql, you cannot add dynamically a column.  You should use compound keys to simulate
+       column creation
+
+   Note1: A quick view in cassandra-cli, will give more understanding on the storage per rows
+
+   Note2: 
+          cqlsh> source '/var/www/cassandra/...cqlsh' 
+          OR
+          csqlsh --file ...
+
+   Note3: What is slicing:
+          select ... WHERE a=0 AND (b,c,d) > (1,3,4);
+
+*/
+
+USE mysite;
+
+// Concept1 is in relation 0..* with Concept2
+
+DROP TABLE IF EXISTS Concept1;
+
+//
+//   Query table
+//
+CREATE TABLE Concept1 (
+   col1         varchar,
+   time_id      timeuuid,       
+   aset         set<text>,
+   PRIMARY KEY (col1, time_id)     
+);
+
+// Some query required:
+
+
+
+
