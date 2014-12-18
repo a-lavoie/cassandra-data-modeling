@@ -14,7 +14,10 @@
        while storing as much columns in one row
 
    (4) In cql, you cannot add dynamically a column.  You should use compound keys to simulate
-       column creation
+       column creation.
+
+   (5) Querying a composite key table brings its constraints:
+       every query, needs to specify the composite key values.
 
    Note1: A quick view in cassandra-cli, will give more understanding on the storage per rows
 
@@ -25,6 +28,10 @@
 
    Note3: What is slicing:
           select ... WHERE a=0 AND (b,c,d) > (1,3,4);
+
+   References:
+          http://www.slideshare.net/yukim/cql3-in-depth
+             Interesting CQL3 Slide.
 
 */
 
