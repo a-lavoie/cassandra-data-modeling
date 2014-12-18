@@ -1,0 +1,146 @@
+// cassandra-cli & cqlsh 
+// are 2 différents tools
+// On >cassandra-cli <Enter>
+// you will be able to view line stored in database like in
+// >cassandra-cli
+// [default@indexapart] use indexapart;
+// [default@indexapart] list UrlsByTags;
+//
+// The objectives is to be able to get the most of search capability 
+// while storing as much columns in one row
+
+//
+//   Checking the databases
+//
+SELECT * FROM system.schema_keyspaces;
+
+// To save output to file
+// CAPTURE 'file...txt';
+CONSISTENCY;
+
+/* 
+   Test adding timestamps to a column name
+*/
+
+SHOW VERSION;
+
+SHOW HOST;
+
+USE indexapart;
+
+DROP TABLE IF EXISTS TestA;
+CREATE TABLE TestA (
+   id                  timeuuid,
+   aString             varchar,
+   tags                set<varchar>,    
+   PRIMARY KEY (id)     
+);
+
+INSERT INTO TestA (id, aString, tags)
+  VALUES (now(), 'yee', {'tag1', 'tag2'} );
+
+SELECT * FROM TestA;
+
+/* 
+   Changing a list of column dynamically
+*/
+
+ALTER TABLE TestA ADD tag3 varchar;
+INSERT INTO TestA (id, aString, tags, tag3)
+  VALUES (now(), 'yee', {'tag1', 'tag2'}, 'atag3Example' );
+SELECT * FROM TestA;
+
+/* 
+   Trying to add a column that exist will throw an error, then use collection instead.
+   This command will generate an error:
+   ALTER TABLE TestA ADD tag3 varchar;
+*/
+
+// TRACING ON;
+
+//
+//   As an alternative to have dynamic column create, some people suggest maps, or 'compound key'.
+//   Here is an example of a composite-keyed table:
+DROP TABLE IF EXISTS UrlsByTags;
+create table UrlsByTags (
+   tag           varchar,
+   ressource     varchar,     // url for instance 
+   lastmodified  timestamp,   // url for instance 
+   mediatype     varchar,     // Photo, Document, Object2, ... 
+   caption       varchar,     // serialize data of the ressource of mediaType 
+   PRIMARY KEY ((tag, mediatype), lastmodified, ressource)
+
+// Partition key: Key that define one row, here tag
+//                If we would of define ... ((tag, mediatype), last...
+//                then, the partition key would of been (tag:mediatype)
+
+
+) WITH CLUSTERING ORDER BY (lastmodified DESC, ressource ASC); 
+
+INSERT INTO UrlsByTags (tag, lastmodified, ressource, mediatype, caption)
+VALUES (
+   'Dessin', 
+   dateof(now()),
+   'http://site.com/pdf/go.pdf', 
+   'application/png', 
+   '{ json structure }' 
+);
+
+
+INSERT INTO UrlsByTags (tag, lastmodified, ressource, mediatype, caption)
+VALUES (
+   'Dessin', 
+   dateof(now()),
+   'http://site.com/pdf/go2.pdf', 
+   'application/png', 
+   '{ json structure }' 
+);
+
+INSERT INTO UrlsByTags (tag, lastmodified, ressource, mediatype, caption)
+VALUES (
+   'Doc', 
+   dateof(now()),
+   'http://site.com/pdf/goa.pdf', 
+   'application/pdf', 
+   '{ json structure }' 
+);
+
+INSERT INTO UrlsByTags (tag, lastmodified, ressource, mediatype, caption)
+VALUES (
+   'Dessin', 
+   dateof(now()),
+   'http://site.com/pdf/gob.pdf', 
+   'application/pdf', 
+   '{ json structure }' 
+);
+
+INSERT INTO UrlsByTags (tag, lastmodified, ressource, mediatype, caption)
+VALUES (
+   'Abstrait', 
+   dateof(now()),
+   'http://site.com/pdf/god.pdf', 
+   'application/pdf', 
+   '{ json structure }' 
+);
+
+
+// SELECT * FROM UrlsByTags WHERE tag='Dessin' ORDER BY mediatype DESC LIMIT 3;
+SELECT * FROM UrlsByTags WHERE tag='Dessin' AND mediatype='application/pdf'  LIMIT 3;
+
+// So a request from a browser that does specify a mediatype, implies all of them
+// and we must issue a request to cassandra for every mediatype before returning a 
+// result,  does this make sense ? 
+SELECT * FROM UrlsByTags WHERE tag='Dessin' AND mediatype='application/pdf' LIMIT 3;
+SELECT * FROM UrlsByTags WHERE tag='Dessin' AND mediatype='application/png' LIMIT 3;
+ 
+DESCRIBE TABLE UrlsByTags;
+
+//tracing off;
+
+
+
+
+
+
+
+
