@@ -80,14 +80,6 @@ VALUES (
    { 'item1', 'item2', 'item3' } 
 );
 
-DROP TABLE IF EXISTS QueryTableConcept1;
-CREATE TABLE QueryTableConcept1 (
-   col1         varchar,
-   time_id      timeuuid,       
-   aset         set<text>,
-   PRIMARY KEY (col1, time_id)     
-);
-
 // Use case: list everything for debugging purpose
 SELECT * FROM mysite.Concept1;
 
@@ -97,6 +89,8 @@ SELECT * FROM mysite.Concept1;
 // This work.
 // But it is not considered a good design.  It is mentionned some places
 // that it does not scale correctly accross nodes
+
+// SOLUTION #1: Create an index on the set
 
 SELECT * FROM mysite.Concept1
 WHERE partitionKey1='partitionVal1' 
@@ -127,9 +121,138 @@ WHERE partitionKey1='partitionVal1'
 // which means you do not see how rows are sparse accross the database.
 
 
-// Use case: rename of partitionKey1
+// SOLUTION #2: Create another table to optimize query
 
-// Use case: adding a 
+DROP TABLE IF EXISTS QueryTableConcept1;
+CREATE TABLE QueryTableConcept1 (
+   eachItemInNormalSet1     text,
+   partitionKey1            text,              // We must use Concept1.(PRIMARY KEY)s
+   partitionKey2            int,               // ...
+   clusterKey1              text,              // ...
+   normalField1             text,              // Duplication of Concept1.normalField1
+   PRIMARY KEY (eachItemInNormalSet1, partitionKey1, partitionKey2, clusterKey1 )     
+);
+
+// Anytime we wich to insert a new row in the Concept1, we must also do it for this QueryTable:
+
+INSERT INTO Concept1 (partitionKey1, partitionKey2, clusterKey1, normalField1, normalSet1)
+VALUES (
+   'partitionVal4', 
+   2, 
+   'clusterVal1',                    
+   'This is a comment', 
+   { 'item5', 'item6', 'item11' } 
+);
+INSERT INTO QueryTableConcept1(
+   eachItemInNormalSet1,
+   partitionKey1, 
+   partitionKey2, 
+   clusterKey1, 
+   normalField1
+) VALUES (
+   'item5',
+   'partitionVal4', 
+   2, 
+   'clusterVal1',                    
+   'This is a comment'
+);
+INSERT INTO QueryTableConcept1(
+   eachItemInNormalSet1,
+   partitionKey1, 
+   partitionKey2, 
+   clusterKey1, 
+   normalField1
+) VALUES (
+   'item6',
+   'partitionVal4', 
+   2, 
+   'clusterVal1',                    
+   'This is a comment'
+);
+INSERT INTO QueryTableConcept1(
+   eachItemInNormalSet1,
+   partitionKey1, 
+   partitionKey2, 
+   clusterKey1, 
+   normalField1
+) VALUES (
+   'item11',
+   'partitionVal4', 
+   2, 
+   'clusterVal1',                    
+   'This is a comment'
+);
+
+
+// USE CASE: adding a new value to the set
+
+UPDATE Concept1 
+SET normalSet1 = normalSet1 + { 'item44' }
+WHERE 
+   partitionKey1='partitionVal4'
+   AND partitionKey2=2
+   AND clusterKey1='clusterVal1';
+
+INSERT INTO QueryTableConcept1(
+   eachItemInNormalSet1,
+   partitionKey1, 
+   partitionKey2, 
+   clusterKey1, 
+   normalField1
+) VALUES (
+   'item44',
+   'partitionVal4', 
+   2, 
+   'clusterVal1',                    
+   'This is a comment'
+);
+
+
+// USE CASE: adding an already existing value to the set
+
+UPDATE Concept1 
+SET normalSet1 = normalSet1 + { 'item44' }
+WHERE 
+   partitionKey1='partitionVal4'
+   AND partitionKey2=2
+   AND clusterKey1='clusterVal1';
+
+select * from Concept1;
+
+
+// It has no effect, as it is supposed
+
+INSERT INTO QueryTableConcept1(
+   eachItemInNormalSet1,
+   partitionKey1, 
+   partitionKey2, 
+   clusterKey1, 
+   normalField1
+) VALUES (
+   'item44',
+   'partitionVal4', 
+   2, 
+   'clusterVal1',                    
+   'This is a comment'
+);
+
+select * from QueryTableConcept1;
+
+
+// USE CASE: rename of partitionKey1
+// If we try to rename a key with an existing key, what will happen to the previous data
+
+UPDATE Concept1 
+SET partitionKey1='partitionVal6'
+WHERE 
+   partitionKey1='partitionVal4'
+   AND partitionKey2=2
+   AND clusterKey1='clusterVal1';
+
+// Not working, kind of logical, This cannot be done.
+
+select * from Concept1;
+
 // Use case: removing 
 
 
