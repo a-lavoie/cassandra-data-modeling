@@ -19,6 +19,7 @@
    (5) Querying a composite key table brings its constraints:
        every query, needs to specify the composite key values.
 
+
    Note1: A quick view in cassandra-cli, will give more understanding on the storage per rows
 
    Note2: 
@@ -41,17 +42,96 @@ USE mysite;
 
 DROP TABLE IF EXISTS Concept1;
 
+// --------------------------------------------------------------------------------------
 //
 //   Query table
 //
 CREATE TABLE Concept1 (
+
+   partitionKey1 varchar,
+   partitionKey2 int,
+
+   clusterKey1   text,  
+     
+   normalField1  text,
+   normalSet1    set<text>,    // A set<> does not scale, it is best to denormalize
+
+   PRIMARY KEY ((partitionKey1, partitionKey2), clusterKey1)  
+);
+
+// --------------------------------------------------------------------------------------
+// USE CASE: insert a row
+
+INSERT INTO Concept1 (partitionKey1, partitionKey2, clusterKey1, normalField1, normalSet1)
+VALUES (
+   'partitionVal1', 
+   2, 
+   'clusterVal1',                    
+   'This is a comment', 
+   { 'item1', 'item2', 'item3' } 
+);
+
+INSERT INTO Concept1 (partitionKey1, partitionKey2, clusterKey1, normalField1, normalSet1)
+VALUES (
+   'partitionVal2', 
+   2, 
+   'clusterVal2',                     
+   'This is a comment', 
+   { 'item1', 'item2', 'item3' } 
+);
+
+DROP TABLE IF EXISTS QueryTableConcept1;
+CREATE TABLE QueryTableConcept1 (
    col1         varchar,
    time_id      timeuuid,       
    aset         set<text>,
    PRIMARY KEY (col1, time_id)     
 );
 
-// Some query required:
+// Use case: list everything for debugging purpose
+SELECT * FROM mysite.Concept1;
+
+
+// --------------------------------------------------------------------------------------
+// USE CASE: searching a Concept1 having a value in normalSet1
+// This work.
+// But it is not considered a good design.  It is mentionned some places
+// that it does not scale correctly accross nodes
+
+SELECT * FROM mysite.Concept1
+WHERE partitionKey1='partitionVal1' 
+   AND partitionKey2=2
+   AND clusterKey1='clusterVal1';  // CONTAINS can only be used on an index column
+
+// Before using CONTAINS, you must index the collection.... by
+CREATE INDEX ON mysite.Concept1(normalSet1);
+
+// Otherwise the CONTAINS will show an error with: ..."No indexed columns present in by-columns"...
+SELECT * FROM mysite.Concept1
+WHERE partitionKey1='partitionVal1' 
+   AND partitionKey2=2
+   AND clusterKey1='clusterVal1'
+   AND normalSet1 CONTAINS 'item3';
+
+// 
+// The bad news is, by executing in cassandra-cli these:
+
+// [default@mysite] list Concept1;
+// Using default limit of 100
+// Using default cell limit of 100
+// -------------------
+// RowKey: partitionVal2:2
+// UUID should be 16 or 0 bytes (11)
+// [default@mysite]
+
+// which means you do not see how rows are sparse accross the database.
+
+
+// Use case: rename of partitionKey1
+
+// Use case: adding a 
+// Use case: removing 
+
 
 
 
